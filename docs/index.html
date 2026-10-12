@@ -16,6 +16,8 @@
       --text: #0b0b0b;
       --text-sub: #52514e;
       --border: #e4e3df;
+      --accent: #2a78d6;
+      --moba: #008300;
     }
     * { box-sizing: border-box; }
     body {
@@ -23,36 +25,46 @@
       font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
       color: var(--text);
       background: var(--surface);
-      line-height: 1.6;
+      line-height: 1.7;
     }
-    /* ヘッダーと地図で画面の高さをちょうど埋める */
-    .app { display: flex; flex-direction: column; height: 100vh; height: 100svh; min-height: 420px; }
+
+    /* ---- 全体の配置：パソコンは「地図｜説明」、スマホは「地図」の下に「説明」 ---- */
+    .app { display: flex; flex-direction: column; height: 100vh; height: 100svh; min-height: 480px; }
     header {
-      flex: none;
-      padding: 0.6rem 1rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel);
+      flex: none; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel);
+      display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.2rem 1rem;
     }
+    header .header-link { color: var(--accent); font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
     header h1 { margin: 0; font-size: 1.15rem; line-height: 1.4; }
     header p { margin: 0.1rem 0 0; font-size: 0.85rem; color: var(--text-sub); }
-
-    #map-wrap { position: relative; flex: 1; }
+    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 440px; }
+    #map-wrap { position: relative; min-height: 0; }
     #map { position: absolute; inset: 0; }
+    .info { overflow-y: auto; border-left: 1px solid var(--border); background: var(--panel); padding: 0.4rem 1rem 2rem; }
 
-    /* 地図の上に重ねるパネル */
+    @media (max-width: 900px) {
+      .app { height: auto; min-height: 0; }
+      .layout { display: block; }
+      #map-wrap { height: 70vh; height: 70svh; min-height: 360px; }
+      .info { border-left: none; border-top: 1px solid var(--border); overflow: visible; }
+    }
+    @media (max-width: 600px) {
+      header h1 { font-size: 1rem; }
+      header p { font-size: 0.8rem; }
+    }
+
+    /* ---- 地図の上の操作パネル ---- */
     .panel {
       position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2;
       width: 17rem; max-width: calc(100% - 4rem); max-height: calc(100% - 3rem); overflow-y: auto;
       background: rgba(255, 255, 255, 0.95); border: 1px solid var(--border); border-radius: 8px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); font-size: 0.85rem;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); font-size: 0.85rem; line-height: 1.5;
     }
     .panel summary { cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 600; }
     .panel-body { padding: 0 0.75rem 0.6rem; }
     .panel h2 { font-size: 0.8rem; color: var(--text-sub); margin: 0.6rem 0 0.25rem; font-weight: 600; }
     .panel label { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0; cursor: pointer; }
     .panel input { margin: 0; width: 1rem; height: 1rem; }
-
-    /* 凡例 */
     .ramp { height: 0.7rem; border-radius: 2px; margin-top: 0.2rem; }
     .ramp-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-sub); }
     .legend-row { display: flex; align-items: center; gap: 0.45rem; padding: 0.1rem 0; }
@@ -60,91 +72,353 @@
     .line-swatch { flex: none; width: 1rem; height: 0; border-top: 2.5px solid; }
     .note { font-size: 0.75rem; color: var(--text-sub); margin: 0.4rem 0 0; }
     .note a { color: inherit; }
-
     #message {
       position: absolute; inset: auto 0 2.5rem; margin: auto; width: fit-content; max-width: 90%; z-index: 3;
       background: #fff3f0; color: #8a1c00; border: 1px solid #f0b8a8; border-radius: 6px; padding: 0.5rem 0.8rem;
     }
+    .profile-marker { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--text); }
 
-    main { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 2rem; }
-    main h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
-    main li { margin-bottom: 0.5rem; }
-    main a { overflow-wrap: anywhere; }
-    footer { font-size: 0.85rem; color: var(--text-sub); border-top: 1px solid var(--border); margin-top: 2rem; padding-top: 1rem; }
-
-    @media (max-width: 600px) {
-      /* スマホでは地図の下を少し見せて、スクロールで出典に進めるようにする */
-      .app { height: 85vh; height: 85svh; }
-      header h1 { font-size: 1rem; }
-      header p { font-size: 0.8rem; }
-      .panel { width: auto; right: 3.2rem; }
+    /* ---- 説明パネル ---- */
+    .info details { border-bottom: 1px solid var(--border); }
+    .info summary {
+      cursor: pointer; list-style: none; padding: 0.8rem 0; font-weight: 700; font-size: 1rem;
+      display: flex; align-items: baseline; gap: 0.5rem;
     }
+    .info summary::-webkit-details-marker { display: none; }
+    .info summary::before { content: "▸"; color: var(--text-sub); flex: none; width: 0.8rem; transition: transform 0.15s; }
+    .info details[open] > summary::before { transform: rotate(90deg); }
+    .info summary .num { color: var(--accent); flex: none; }
+    .info .body { padding: 0 0 1rem; font-size: 0.92rem; }
+    .info .body p { margin: 0 0 0.6rem; }
+    .info .body ul { margin: 0 0 0.6rem; padding-left: 1.2rem; }
+    .info .body li { margin-bottom: 0.3rem; }
+    .info h3 { font-size: 0.92rem; margin: 1rem 0 0.4rem; }
+    .info a { color: var(--accent); overflow-wrap: anywhere; }
+    .info figure { margin: 0.4rem 0 0.8rem; }
+    .info figcaption { font-size: 0.8rem; color: var(--text-sub); }
+    .info img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 4px; }
+    .small { font-size: 0.8rem; color: var(--text-sub); }
+
+    .table-wrap { overflow-x: auto; margin: 0.4rem 0 0.8rem; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; line-height: 1.5; }
+    th, td { border-bottom: 1px solid var(--border); padding: 0.4rem 0.4rem; text-align: left; vertical-align: top; }
+    th { background: #f4f3ef; font-weight: 600; white-space: nowrap; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    /* 数字を大きく見せるカード */
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0.4rem 0 0.8rem; }
+    .card { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.7rem; background: var(--surface); }
+    .card .label { font-size: 0.78rem; color: var(--text-sub); line-height: 1.4; }
+    .card .value { font-size: 1.6rem; font-weight: 700; line-height: 1.3; font-variant-numeric: tabular-nums; }
+    .card .value small { font-size: 0.85rem; font-weight: 600; margin-left: 0.15rem; }
+    .card .sub { font-size: 0.75rem; color: var(--text-sub); line-height: 1.4; }
+
+    /* 水深区分の横棒 */
+    .bar-cell { width: 40%; }
+    .bar { height: 0.7rem; background: var(--accent); border-radius: 0 3px 3px 0; min-width: 1px; }
+
+    /* 断面図 */
+    .chart { position: relative; }
+    .chart svg { display: block; width: 100%; height: auto; touch-action: none; }
+    .chart .tip {
+      position: absolute; pointer-events: none; background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.25rem 0.5rem; font-size: 0.78rem; line-height: 1.4; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); white-space: nowrap;
+    }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.78rem; color: var(--text-sub); margin-top: 0.2rem; }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    footer { font-size: 0.85rem; color: var(--text-sub); padding-top: 1rem; }
   </style>
 </head>
 <body>
   <div class="app">
-  <header>
-    <h1>グリーンレーザで見る伊豆の藻場ポテンシャル</h1>
-    <p>航空機から緑色のレーザで測った海底地形をもとに、藻場ができやすい場所を推定した地図です（伊豆半島西岸）。</p>
-  </header>
-
-  <div id="map-wrap">
-    <div id="map" role="region" aria-label="藻場ポテンシャルの地図"></div>
-
-    <details class="panel" id="panel" open>
-      <summary>表示の切り替えと凡例</summary>
-      <div class="panel-body">
-        <h2>背景地図</h2>
-        <label><input type="radio" name="basemap" value="pale" checked> 淡色地図</label>
-        <label><input type="radio" name="basemap" value="photo"> 写真</label>
-
-        <h2>レイヤ</h2>
-        <label><input type="checkbox" data-layer="depth" checked> 水深図</label>
-        <label><input type="checkbox" data-layer="potential"> 藻場ポテンシャル図</label>
-        <label><input type="checkbox" data-layer="contours" checked> 等深線（5m間隔）</label>
-        <label><input type="checkbox" data-layer="moba" checked> 環境省の藻場</label>
-
-        <h2>水深（m）</h2>
-        <div class="ramp" id="depth-ramp"></div>
-        <div class="ramp-labels"><span>0</span><span>5</span><span>10</span><span>15</span></div>
-
-        <h2>藻場ポテンシャル</h2>
-        <div class="legend-row"><span class="swatch" style="background:#2a78d6"></span>砂泥タイプ（水深1〜10m・なだらか・平ら）</div>
-        <div class="legend-row"><span class="swatch" style="background:#eb6834"></span>岩礁タイプ（水深1〜15m・デコボコ）</div>
-
-        <h2>その他</h2>
-        <div class="legend-row"><span class="swatch" style="background:#808080"></span>データなし（灰色＝レーザが届かなかった所）</div>
-        <div class="legend-row"><span class="line-swatch" style="border-color:#008300"></span>環境省の藻場（枠線）</div>
-        <div class="legend-row"><span class="line-swatch" style="border-color:#1a1a19;border-top-width:1.5px"></span>等深線（太線は海岸線）</div>
-
-        <p class="note">北西の深い区域は、元データが補間で作られているため、ポテンシャル区分の信頼性が低くなっています。くわしくは<a href="notes.html">調査メモ</a>へ。</p>
+    <header>
+      <div>
+        <h1>グリーンレーザで見る伊豆の藻場ポテンシャル</h1>
+        <p>航空機から緑色のレーザで測った海底地形をもとに、藻場ができやすい場所を推定した地図です（伊豆半島西岸）。</p>
       </div>
-    </details>
+      <a class="header-link" href="3d.html">点群を3Dで見る →</a>
+    </header>
 
-    <div id="message" hidden></div>
+    <div class="layout">
+      <div id="map-wrap">
+        <div id="map" role="region" aria-label="藻場ポテンシャルの地図"></div>
+
+        <details class="panel" id="panel" open>
+          <summary>表示の切り替えと凡例</summary>
+          <div class="panel-body">
+            <h2>背景地図</h2>
+            <label><input type="radio" name="basemap" value="pale" checked> 淡色地図</label>
+            <label><input type="radio" name="basemap" value="photo"> 写真</label>
+
+            <h2>レイヤ</h2>
+            <label><input type="checkbox" data-layer="depth" checked> 水深図</label>
+            <label><input type="checkbox" data-layer="potential"> 藻場ポテンシャル図</label>
+            <label><input type="checkbox" data-layer="contours" checked> 等深線（5m間隔）</label>
+            <label><input type="checkbox" data-layer="moba" checked> 環境省の藻場</label>
+            <label><input type="checkbox" data-layer="profile" checked> 断面線</label>
+
+            <h2>水深（m）</h2>
+            <div class="ramp" id="depth-ramp"></div>
+            <div class="ramp-labels"><span>0</span><span>5</span><span>10</span><span>15</span></div>
+
+            <h2>藻場ポテンシャル</h2>
+            <div class="legend-row"><span class="swatch" style="background:#2a78d6"></span>砂泥タイプ（水深1〜10m・なだらか・平ら）</div>
+            <div class="legend-row"><span class="swatch" style="background:#eb6834"></span>岩礁タイプ（水深1〜15m・デコボコ）</div>
+
+            <h2>その他</h2>
+            <div class="legend-row"><span class="swatch" style="background:#808080"></span>データなし（灰色＝レーザが届かなかった所）</div>
+            <div class="legend-row"><span class="line-swatch" style="border-color:#008300"></span>環境省の藻場（枠線）</div>
+            <div class="legend-row"><span class="line-swatch" style="border-color:#1a1a19;border-top-width:1.5px"></span>等深線（太線は海岸線）</div>
+            <div class="legend-row"><span class="line-swatch" style="border-color:#0b0b0b;border-top-style:dashed"></span>断面線（説明の「5」の断面図）</div>
+
+            <p class="note">北西の深い区域は、元データが補間で作られているため、ポテンシャル区分の信頼性が低くなっています。くわしくは<a href="notes.html">調査メモ</a>へ。</p>
+          </div>
+        </details>
+
+        <div id="message" hidden></div>
+      </div>
+
+      <aside class="info" aria-label="説明">
+
+        <!-- 1 -->
+        <details open>
+          <summary><span class="num">1</span>ALB（グリーンレーザ）とは？</summary>
+          <div class="body">
+            <p>ALB（航空レーザ測深）は、航空機から<strong>近赤外レーザ</strong>と<strong>グリーンレーザ</strong>を同時に海へ向けて照射する測量です。近赤外の光は水面ではね返り、グリーンの光は水の中を通りぬけて海底ではね返ります。2つの光が戻ってくるまでの<strong>時間の差</strong>から、水深を計算します。</p>
+            <figure>
+              <svg viewBox="0 0 340 200" role="img" aria-label="ALBの仕組みの図：航空機から近赤外レーザが水面で、グリーンレーザが海底で反射する">
+                <!-- 空・海・海底 -->
+                <rect x="0" y="0" width="340" height="200" fill="#f4f8fd"/>
+                <rect x="0" y="108" width="340" height="92" fill="#cde2fb"/>
+                <path d="M0 200 L0 170 C60 168 110 176 170 172 C230 168 280 158 340 150 L340 200 Z" fill="#c9b48a"/>
+                <line x1="0" y1="108" x2="340" y2="108" stroke="#2a78d6" stroke-width="1.5"/>
+                <text x="334" y="103" font-size="10" text-anchor="end" fill="#52514e">水面</text>
+                <text x="334" y="194" font-size="10" text-anchor="end" fill="#52514e">海底</text>
+                <!-- 航空機 -->
+                <g transform="translate(150 22)" fill="#52514e">
+                  <ellipse cx="20" cy="6" rx="22" ry="5"/>
+                  <path d="M14 6 L4 -8 L10 -8 L26 6 Z"/>
+                  <path d="M14 6 L4 20 L10 20 L26 6 Z"/>
+                  <path d="M-2 6 L-6 -2 L-1 -2 L4 6 Z"/>
+                </g>
+                <text x="198" y="22" font-size="10" fill="#0b0b0b">航空機</text>
+                <!-- 近赤外：水面で反射 -->
+                <line x1="165" y1="30" x2="120" y2="108" stroke="#b5302a" stroke-width="2" stroke-dasharray="5 3"/>
+                <line x1="120" y1="108" x2="160" y2="32" stroke="#b5302a" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>
+                <text x="12" y="70" font-size="10" fill="#0b0b0b">近赤外レーザ</text>
+                <text x="12" y="83" font-size="10" fill="#52514e">→ 水面で反射</text>
+                <!-- グリーン：海底で反射 -->
+                <line x1="175" y1="30" x2="200" y2="108" stroke="#008300" stroke-width="2"/>
+                <line x1="200" y1="108" x2="214" y2="168" stroke="#008300" stroke-width="2"/>
+                <line x1="214" y1="168" x2="181" y2="31" stroke="#008300" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>
+                <text x="228" y="70" font-size="10" fill="#0b0b0b">グリーンレーザ</text>
+                <text x="228" y="83" font-size="10" fill="#52514e">→ 水を通って海底で反射</text>
+                <!-- 水深 -->
+                <line x1="238" y1="111" x2="238" y2="162" stroke="#0b0b0b" stroke-width="1" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+                <text x="244" y="140" font-size="10" fill="#0b0b0b">水深</text>
+                <text x="244" y="152" font-size="9" fill="#52514e">（時間の差から計算）</text>
+                <defs>
+                  <marker id="arrow" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M0 0 L6 3 L0 6 Z" fill="#0b0b0b"/>
+                  </marker>
+                </defs>
+              </svg>
+              <figcaption>ALBの仕組み（簡略図）。点線は戻ってくる光。</figcaption>
+            </figure>
+            <p>船を出したり人が潜ったりしなくても、<strong>陸から浅い海まで切れ目なく</strong>地形を測れるのが特長です。ただし、測れる深さは水の透明度に左右され、目安は<strong>透明度の1.5倍程度まで</strong>です。</p>
+            <p>実際に測った点群（陸と海底）は、<a href="3d.html">3D点群ビューア</a>で回しながら見られます。</p>
+          </div>
+        </details>
+
+        <!-- 2 -->
+        <details>
+          <summary><span class="num">2</span>ALBは何に使われるのか？</summary>
+          <div class="body">
+            <ul>
+              <li><strong>地形の測量と管理</strong>：川の底（河床）や海岸の浅い海の地形を測り、砂浜の侵食や土砂の動きの管理に使われます。</li>
+              <li><strong>防災</strong>：津波や高潮のシミュレーション、港や船の通り道（航路）の管理に使われます。</li>
+              <li><strong>自然環境</strong>：藻場やサンゴ礁など、浅い海の生きものの住みかを調べるのに役立ちます。</li>
+              <li><strong>オープンデータ</strong>：静岡県のように、測った点群をオープンデータとして公開し、誰でも使えるようにしている例があります。このページも、その公開データを使っています。</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- 3 -->
+        <details>
+          <summary><span class="num">3</span>藻場とALBの関係</summary>
+          <div class="body">
+            <p>藻場は、光が届く浅い海にできます。どこにできるかは、<strong>水深</strong>、<strong>海底の傾き</strong>、<strong>海底の凸凹</strong>（岩場か砂地か）に大きく左右されます。</p>
+            <p>ALBなら、これらの地形の条件を、藻場を傷つけずに広い範囲で一度に測れます。研究では、レーザのはね返りの強さや波形から藻場そのものを見分ける試みもありますが、<strong>今回は地形だけを使った簡易的な判定</strong>です。</p>
+            <p>藻場が吸収する炭素（ブルーカーボン）を取引する「Jブルークレジット」では藻場の面積を算定します。ALBは、その算定の精度を上げるのに役立つ可能性があります。</p>
+          </div>
+        </details>
+
+        <!-- 4 -->
+        <details>
+          <summary><span class="num">4</span>使用したデータ</summary>
+          <div class="body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>データ名</th><th>提供者</th><th>内容</th><th>時期</th><th>ライセンス</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ（ALBデータ）図郭 08OE2670（土肥付近）</td>
+                    <td>静岡県（G空間情報センター）</td>
+                    <td>点の数 6,743,586点、点密度 約56点/m²、範囲 約400m×300m。標高 -26.03〜63.81m（海底の点は最も深くて約-16m）</td>
+                    <td>LASファイルの作成日 2021年3月（計測日は未確認）</td>
+                    <td>CC BY 4.0（ODbLとのデュアルライセンスのうちCC BY 4.0を選択）</td>
+                  </tr>
+                  <tr>
+                    <td>自然環境保全基礎調査 藻場調査2018-2020（UTM54）</td>
+                    <td>環境省自然環境局 生物多様性センター（環境ジオポータル）</td>
+                    <td>衛星画像から判読した藻場の範囲。この範囲には海藻藻場が2件</td>
+                    <td>主に2014〜2018年の衛星画像から作成（この範囲の2件は2013年4月の画像）</td>
+                    <td>政府標準利用規約 第2.0版</td>
+                  </tr>
+                  <tr>
+                    <td>地理院タイル（淡色地図・写真）</td>
+                    <td>国土地理院</td>
+                    <td>背景地図</td>
+                    <td>—</td>
+                    <td>出典「地理院タイル」を表示して利用</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small">標高の最小 -26.03m は、水面や水中の点と考えられる点（分類コード11）の値です。</p>
+          </div>
+        </details>
+
+        <!-- 5 -->
+        <details open>
+          <summary><span class="num">5</span>分析結果からわかること</summary>
+          <div class="body">
+            <div class="cards">
+              <div class="card">
+                <div class="label">藻場ポテンシャル域の面積</div>
+                <div class="value">64,874<small>m²</small></div>
+                <div class="sub">砂泥タイプ 32,460 m² ＋ 岩礁タイプ 32,414 m²</div>
+              </div>
+              <div class="card">
+                <div class="label">実際の藻場のうち、ポテンシャル域に入った割合</div>
+                <div class="value">92.3<small>%</small></div>
+                <div class="sub">岩礁タイプ 85.3%、砂泥タイプ 7.0%</div>
+              </div>
+              <div class="card">
+                <div class="label">藻場の内側の水深（中央値）</div>
+                <div class="value">2.25<small>m</small></div>
+                <div class="sub">藻場の外側は 6.00 m</div>
+              </div>
+              <div class="card">
+                <div class="label">ポテンシャル域のうち、実際に藻場がある割合</div>
+                <div class="value">約19<small>%</small></div>
+                <div class="sub">残りの約8割には藻場がない</div>
+              </div>
+            </div>
+
+            <h3>水深の区分ごとの面積</h3>
+            <div class="table-wrap">
+              <table id="depth-table">
+                <thead><tr><th>水深</th><th class="num">面積（m²）</th><th class="bar-cell"><span class="small">面積の大きさ</span></th></tr></thead>
+                <tbody>
+                  <tr><td>0–2 m</td><td class="num">11,879</td><td class="bar-cell"><div class="bar" data-v="11879"></div></td></tr>
+                  <tr><td>2–5 m</td><td class="num">24,406</td><td class="bar-cell"><div class="bar" data-v="24406"></div></td></tr>
+                  <tr><td>5–10 m</td><td class="num">26,179</td><td class="bar-cell"><div class="bar" data-v="26179"></div></td></tr>
+                  <tr><td>10–15 m</td><td class="num">11,223</td><td class="bar-cell"><div class="bar" data-v="11223"></div></td></tr>
+                  <tr><td>15 m以上</td><td class="num">227</td><td class="bar-cell"><div class="bar" data-v="227"></div></td></tr>
+                  <tr><td>データなし</td><td class="num">2</td><td class="bar-cell"><div class="bar" data-v="2" style="background:#808080"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small">海の面積は合計 73,914 m²（ALBの範囲 120,000 m² のうち、残りの 46,084 m² は陸）。</p>
+
+            <h3>藻場の内側と外側の水深</h3>
+            <figure>
+              <img src="data/depth_hist.png" alt="藻場の内側と外側の水深の分布を1mごとに比べた棒グラフ" width="1200" height="675" loading="lazy">
+            </figure>
+            <p>藻場の内側では、面積の約66%が水深1〜3mに集まっています（外側では約13%）。一方、藻場の外側は水深3.71〜9.05mあたりに広がっています（真ん中の半分の範囲）。藻場は、とくに浅い場所にできていることがわかります。</p>
+
+            <h3>断面図（海岸から沖へ）</h3>
+            <div class="chart" id="profile-chart">
+              <p class="small">読み込み中…</p>
+            </div>
+            <div class="chart-legend">
+              <span><span class="line-swatch" style="border-color:#0b0b0b;border-top-width:2px"></span>地形（陸と海底）</span>
+              <span><span class="swatch" style="background:#cde2fb"></span>海</span>
+              <span><span class="swatch" style="background:#008300;opacity:0.35"></span>環境省の藻場</span>
+            </div>
+            <p class="small">地図上の黒い点線が断面線です。グラフの上で指やマウスを動かすと、地図上にその位置が表示されます。陸（標高12.5m）から始まり、海岸から少し沖の水深約1〜3mのところで藻場の上を通り、北西の水深15.7mまで続きます。</p>
+
+            <h3>レーザが届かなかった海域</h3>
+            <p>データなし（レーザが届かなかった所）は <strong>2 m²</strong> だけで、ALBの範囲 120,000 m² のほぼ0%でした。濁った海や深すぎる海では、グリーンレーザが海底まで届かず、地図に穴があきます。今回の範囲では、海底がほぼすき間なく測れていたといえます。ただし、北西の深い区域（水深およそ10m以上）は、提供データが補間されたような平らな面になっていて、細かい凸凹はわかりません。</p>
+
+            <h3>まとめ</h3>
+            <ul>
+              <li><strong>条件がそろっていても藻場がない場所</strong>：ポテンシャル域の約8割には藻場がなく、とくに水深5m以上にはほとんどありません。光が弱くなること、水の濁り、水温の上昇、ウニなどが海藻を食べつくす「磯焼け」など、地形だけでは決まらない理由が考えられます。</li>
+              <li><strong>条件外でも藻場がある場所</strong>：藻場の約8%（1,015 m²）は簡易ルールの対象外でした。藻場の内側の 7.27% は水深1m未満で、ルール（水深1m以上）から外れています。また、藻場データ（2013年の衛星画像）とALB（2021年ごろ）の時期の差で、藻場の広がりが変わっている可能性もあります。</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- 6 -->
+        <details>
+          <summary><span class="num">6</span>日本とフィリピンの藻場調査の違い</summary>
+          <div class="body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>観点</th><th>日本</th><th>フィリピン</th></tr></thead>
+                <tbody>
+                  <tr><td>主な担い手</td><td>行政・企業・大学など研究機関</td><td>学生・コミュニティ・地域住民</td></tr>
+                  <tr><td>主な手法</td><td>航空写真、ドローン、目視、坪刈り、方形枠観察</td><td>ダイバー目視、ドローン</td></tr>
+                  <tr><td>主な目的</td><td>Jブルークレジット認証のための高精度な炭素量算定</td><td>種の同定、生息環境の分析、生態系への影響評価</td></tr>
+                  <tr><td>藻場への影響</td><td>坪刈りは採取を伴う</td><td>藻場を維持したまま調査</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>グリーンレーザは、藻場を傷つけずに広域の地形を測れる点でフィリピン型の非破壊調査と相性がよく、精度面で日本型の算定を補える可能性がある。ただし濁りに弱く、藻場の種類までは分からない。</p>
+          </div>
+        </details>
+
+        <!-- 7 -->
+        <details>
+          <summary><span class="num">7</span>限界</summary>
+          <div class="body">
+            <ul>
+              <li><strong>潮位補正をしていない</strong>：標高0m（東京湾平均海面と推定）より低い所を海としました。測ったときの実際の潮の高さは反映していません。</li>
+              <li><strong>簡易ルールである</strong>：水深・傾斜・凸凹（ざらつき）だけで判定しています。凸凹の「大・小」の境目は、海域の中央値 0.0414 m に決めました。</li>
+              <li><strong>時期のずれ</strong>：この範囲の藻場データは2013年の衛星画像、ALBは2021年ごろの作成で、7〜8年の差があります。</li>
+              <li><strong>濁りで測れない海域</strong>：濁った海ではレーザが海底まで届きません。今回の範囲ではデータなしは 2 m² だけでしたが、北西の深い区域は補間されたデータで、ポテンシャル区分の信頼性が低くなっています。</li>
+              <li><strong>推定のままのこと</strong>：LASファイルの分類コード 11・12・22 の意味は、説明資料がないため推定です。座標系（平面直角座標系 第Ⅷ系）と標高0mの基準も推定です。藻場タイプの番号（1＝アマモ場、2＝海藻藻場、3＝スガモ場）は凡例で確認済みです。</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- 8 -->
+        <details>
+          <summary><span class="num">8</span>出典・ライセンス</summary>
+          <div class="body">
+            <ul>
+              <li>静岡県「VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ」ALBデータ（オリジナル・グラウンドデータ、グリッドデータ）図郭 08OE2670、G空間情報センター
+                <a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud">https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud</a>
+                （<a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a>）を加工して作成</li>
+              <li>環境省自然環境局 生物多様性センター「自然環境保全基礎調査 藻場調査2018-2020（UTM54）」、環境ジオポータル
+                <a href="https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about">https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about</a>
+                （提供元の利用規約（政府標準利用規約 第2.0版）に基づき利用）を加工して作成。藻場タイプの凡例：
+                <a href="https://www.biodic.go.jp/moba/1_3_7.html">https://www.biodic.go.jp/moba/1_3_7.html</a></li>
+              <li>背景地図：<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（淡色地図、写真）</li>
+            </ul>
+            <p>調べた方法とくわしい結果は<a href="notes.html">調査メモ</a>にあります。</p>
+            <footer>
+              © 作者名 ／ このページは <a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a> で公開しています。
+            </footer>
+          </div>
+        </details>
+      </aside>
+    </div>
   </div>
-  </div>
-
-  <main>
-    <h2>この地図について</h2>
-    <p>グリーンレーザ（ALB：航空レーザ測深）は、水を通りやすい緑色のレーザを使って、陸と海底の地形をまとめて測る方法です。藻場を壊さずに広い範囲を測れます。この地図では、海底の深さ・傾き・デコボコ（ざらつき）から、藻場ができやすい場所を簡単なルールで2つのタイプに分けました。調べた方法と結果は<a href="notes.html">調査メモ</a>にあります。</p>
-
-    <h2>使用データの出典</h2>
-    <ul>
-      <li>静岡県「VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ」ALBデータ（オリジナル・グラウンドデータ、グリッドデータ）図郭 08OE2670、G空間情報センター
-        <a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud">https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud</a>
-        （<a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a>）を加工して作成</li>
-      <li>環境省自然環境局 生物多様性センター「自然環境保全基礎調査 藻場調査2018-2020（UTM54）」、環境ジオポータル
-        <a href="https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about">https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about</a>
-        （提供元の利用規約（政府標準利用規約 第2.0版）に基づき利用）を加工して作成。藻場タイプの凡例：
-        <a href="https://www.biodic.go.jp/moba/1_3_7.html">https://www.biodic.go.jp/moba/1_3_7.html</a></li>
-      <li>背景地図：<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（淡色地図、写真）</li>
-    </ul>
-
-    <footer>
-      <p>© 作者名 ／ この成果物は <a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a> で公開しています。</p>
-    </footer>
-  </main>
 
   <script>
     // 水深の色（scripts/04_export_web.py の DEPTH_RAMP と同じ）
@@ -153,7 +427,12 @@
     document.getElementById("depth-ramp").style.background =
       `linear-gradient(to right, ${DEPTH_RAMP.join(",")}) 0 0 / ${(16 / 15) * 100}% 100% no-repeat`;
 
-    // スマホでは最初はパネルを閉じておく（地図を広く見せるため）
+    // 水深区分の横棒の長さ
+    const bars = [...document.querySelectorAll("#depth-table .bar")];
+    const maxBar = Math.max(...bars.map((b) => Number(b.dataset.v)));
+    bars.forEach((b) => { b.style.width = `${(Number(b.dataset.v) / maxBar) * 100}%`; });
+
+    // スマホでは最初は地図の操作パネルを閉じておく（地図を広く見せるため）
     if (window.matchMedia("(max-width: 600px)").matches) {
       document.getElementById("panel").open = false;
     }
@@ -196,6 +475,7 @@
       potential: ["potential"],
       contours: ["contours", "coastline"],
       moba: ["moba-casing", "moba"],
+      profile: ["profile-casing", "profile"],
     };
 
     function showMessage(text) {
@@ -220,6 +500,7 @@
       map.addSource("potential", { type: "image", url: "data/potential.png", coordinates: coords });
       map.addSource("contours", { type: "geojson", data: "data/contours.geojson" });
       map.addSource("moba", { type: "geojson", data: "data/moba.geojson" });
+      map.addSource("profile", { type: "geojson", data: "data/profile_line.geojson" });
 
       const rasterPaint = { "raster-opacity": 0.85, "raster-resampling": "nearest", "raster-fade-duration": 0 };
       map.addLayer({ id: "depth", type: "raster", source: "depth", paint: rasterPaint });
@@ -235,6 +516,9 @@
       // 藻場の枠線（写真の上でも見えるよう、白いふちを下に敷く）
       map.addLayer({ id: "moba-casing", type: "line", source: "moba", paint: { "line-color": "#ffffff", "line-width": 4.5, "line-opacity": 0.9 } });
       map.addLayer({ id: "moba", type: "line", source: "moba", paint: { "line-color": "#008300", "line-width": 2.5 } });
+      // 断面線（点線）
+      map.addLayer({ id: "profile-casing", type: "line", source: "profile", paint: { "line-color": "#ffffff", "line-width": 5, "line-opacity": 0.9 } });
+      map.addLayer({ id: "profile", type: "line", source: "profile", paint: { "line-color": "#0b0b0b", "line-width": 2.5, "line-dasharray": [2, 1.5] } });
 
       // 初期表示を bounds.json の範囲に合わせる
       const lons = coords.map((c) => c[0]);
@@ -274,6 +558,125 @@
     });
 
     map.on("error", (e) => console.error(e.error));
+
+    // ---- 断面図（SVGで描く） ----
+    const markerEl = document.createElement("div");
+    markerEl.className = "profile-marker";
+    const profileMarker = new maplibregl.Marker({ element: markerEl });
+
+    async function drawProfile() {
+      const box = document.getElementById("profile-chart");
+      let data;
+      try {
+        const res = await fetch("data/profile.json");
+        if (!res.ok) throw new Error(res.status);
+        data = await res.json();
+      } catch (e) {
+        box.innerHTML = '<p class="small">断面のデータ（data/profile.json）を読み込めませんでした。</p>';
+        return;
+      }
+      const pts = data.points.filter((p) => p["標高_m"] !== null);
+      const NS = "http://www.w3.org/2000/svg";
+      const W = 400, H = 230, M = { top: 14, right: 12, bottom: 34, left: 40 };
+      const xMax = Math.ceil(pts[pts.length - 1]["距離_m"] / 50) * 50;
+      const yMin = -20, yMax = 15;
+      const x = (d) => M.left + (d / xMax) * (W - M.left - M.right);
+      const y = (z) => M.top + ((yMax - z) / (yMax - yMin)) * (H - M.top - M.bottom);
+
+      const el = (tag, attrs, parent) => {
+        const e = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        if (parent) parent.appendChild(e);
+        return e;
+      };
+
+      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+        "aria-label": "海岸から沖への断面図。陸から始まり、藻場の上を通って水深約16mまで深くなる" });
+
+      // 藻場の区間（帯）
+      let start = null;
+      data.points.forEach((p, i) => {
+        if (p["藻場"] && start === null) start = p["距離_m"];
+        const next = data.points[i + 1];
+        if (start !== null && (!next || !next["藻場"])) {
+          el("rect", { x: x(start), y: M.top, width: Math.max(x(p["距離_m"]) - x(start), 1), height: H - M.top - M.bottom,
+                       fill: "#008300", opacity: 0.18 }, svg);
+          const label = el("text", { x: (x(start) + x(p["距離_m"])) / 2, y: M.top + 11, "font-size": 10, "text-anchor": "middle", fill: "#006300" }, svg);
+          label.textContent = "藻場";
+          start = null;
+        }
+      });
+
+      // 海（0m と海底のあいだ）
+      const sea = pts.filter((p) => p["標高_m"] < 0);
+      if (sea.length) {
+        const top = `M${x(sea[0]["距離_m"])},${y(0)} ` + sea.map((p) => `L${x(p["距離_m"])},${y(p["標高_m"])}`).join(" ");
+        el("path", { d: `${top} L${x(sea[sea.length - 1]["距離_m"])},${y(0)} Z`, fill: "#cde2fb" }, svg);
+      }
+
+      // 目盛りと補助線
+      for (let z = yMin; z <= yMax; z += 5) {
+        el("line", { x1: M.left, x2: W - M.right, y1: y(z), y2: y(z), stroke: z === 0 ? "#2a78d6" : "#e4e3df", "stroke-width": z === 0 ? 1.2 : 0.8 }, svg);
+        const t = el("text", { x: M.left - 5, y: y(z) + 3.5, "font-size": 10, "text-anchor": "end", fill: "#52514e" }, svg);
+        t.textContent = z;
+      }
+      for (let d = 0; d <= xMax; d += 50) {
+        const t = el("text", { x: x(d), y: H - M.bottom + 14, "font-size": 10, "text-anchor": "middle", fill: "#52514e" }, svg);
+        t.textContent = d;
+      }
+      const seaLabel = el("text", { x: W - M.right - 2, y: y(0) - 4, "font-size": 10, "text-anchor": "end", fill: "#2a78d6" }, svg);
+      seaLabel.textContent = "海面（0m）";
+      const xl = el("text", { x: (M.left + W - M.right) / 2, y: H - 4, "font-size": 10, "text-anchor": "middle", fill: "#52514e" }, svg);
+      xl.textContent = "陸側からの距離（m）→ 沖";
+      const yl = el("text", { x: 10, y: (M.top + H - M.bottom) / 2, "font-size": 10, "text-anchor": "middle", fill: "#52514e",
+                              transform: `rotate(-90 10 ${(M.top + H - M.bottom) / 2})` }, svg);
+      yl.textContent = "標高（m）";
+
+      // 地形の線
+      el("path", { d: pts.map((p, i) => `${i ? "L" : "M"}${x(p["距離_m"])},${y(p["標高_m"])}`).join(" "),
+                   fill: "none", stroke: "#0b0b0b", "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+
+      // なぞったときの縦線と点
+      const cross = el("line", { y1: M.top, y2: H - M.bottom, stroke: "#52514e", "stroke-width": 1, visibility: "hidden" }, svg);
+      const dot = el("circle", { r: 4, fill: "#fff", stroke: "#0b0b0b", "stroke-width": 2, visibility: "hidden" }, svg);
+      // 当たり判定を広くするための透明な四角
+      const hit = el("rect", { x: M.left, y: 0, width: W - M.left - M.right, height: H, fill: "transparent" }, svg);
+
+      box.innerHTML = "";
+      box.appendChild(svg);
+      const tip = document.createElement("div");
+      tip.className = "tip";
+      tip.hidden = true;
+      box.appendChild(tip);
+
+      const show = (clientX) => {
+        const r = svg.getBoundingClientRect();
+        const sx = ((clientX - r.left) / r.width) * W;
+        const d = ((sx - M.left) / (W - M.left - M.right)) * xMax;
+        let p = pts[0];
+        for (const q of pts) if (Math.abs(q["距離_m"] - d) < Math.abs(p["距離_m"] - d)) p = q;
+        cross.setAttribute("x1", x(p["距離_m"])); cross.setAttribute("x2", x(p["距離_m"]));
+        dot.setAttribute("cx", x(p["距離_m"])); dot.setAttribute("cy", y(p["標高_m"]));
+        cross.setAttribute("visibility", "visible"); dot.setAttribute("visibility", "visible");
+        const depthText = p["水深_m"] !== null ? `水深 ${p["水深_m"].toFixed(1)} m` : `標高 ${p["標高_m"].toFixed(1)} m（陸）`;
+        tip.innerHTML = `距離 ${p["距離_m"]} m<br><strong>${depthText}</strong>` +
+          (p["藻場"] ? "<br>藻場の中" : "") + (p["ポテンシャル"] ? `<br>${p["ポテンシャル"]}` : "");
+        tip.hidden = false;
+        const px = (x(p["距離_m"]) / W) * r.width;
+        tip.style.left = `${Math.min(Math.max(px + 10, 0), r.width - tip.offsetWidth)}px`;
+        tip.style.top = "4px";
+        profileMarker.setLngLat([p["経度"], p["緯度"]]).addTo(map);
+      };
+      const hide = () => {
+        cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+        tip.hidden = true;
+        profileMarker.remove();
+      };
+      hit.addEventListener("pointermove", (e) => show(e.clientX));
+      hit.addEventListener("pointerdown", (e) => show(e.clientX));
+      hit.addEventListener("pointerleave", hide);
+    }
+    drawProfile();
   </script>
 </body>
 </html>

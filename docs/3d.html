@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D点群ビューア｜グリーンレーザで見る伊豆の藻場ポテンシャル</title>
+  <!-- deck.gl（バージョン固定。integrity はファイルが書き換えられていないかの確認用） -->
+  <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.4.0/dist.min.js"
+          integrity="sha384-NrpHmp6N6IhXZ+gSV+uRLo+Hqprkw4BfdGzmxgWXhjakjkAabyfQxokSmn/aK0VB" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #1a1a19;
+      --panel: rgba(255, 255, 255, 0.95);
+      --text: #0b0b0b;
+      --text-sub: #52514e;
+      --border: #e4e3df;
+      --accent: #2a78d6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+    .app { display: flex; flex-direction: column; height: 100vh; height: 100svh; }
+    header {
+      flex: none; padding: 0.6rem 1rem; background: #fff; border-bottom: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.2rem 1rem;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; line-height: 1.4; }
+    header p { margin: 0; font-size: 0.85rem; color: var(--text-sub); }
+    header a { color: var(--accent); font-size: 0.9rem; white-space: nowrap; }
+    #view { position: relative; flex: 1; min-height: 0; }
+
+    .panel {
+      position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2;
+      width: 16rem; max-width: calc(100% - 1.2rem); max-height: calc(100% - 1.2rem); overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); font-size: 0.85rem; line-height: 1.5;
+    }
+    .panel summary { cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 600; }
+    .panel-body { padding: 0 0.75rem 0.7rem; }
+    .panel h2 { font-size: 0.8rem; color: var(--text-sub); margin: 0.6rem 0 0.25rem; font-weight: 600; }
+    .ramp { height: 0.7rem; border-radius: 2px; }
+    .ramp-labels { position: relative; height: 1.1rem; font-size: 0.75rem; color: var(--text-sub); }
+    .ramp-labels span { position: absolute; transform: translateX(-50%); }
+    .ramp-labels span:first-child { transform: none; }
+    .ramp-labels span:last-child { transform: translateX(-100%); }
+    .ramp-caption { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-sub); }
+    label.slider { display: block; margin: 0.3rem 0; }
+    label.slider input { width: 100%; }
+    button {
+      font: inherit; font-size: 0.85rem; padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; cursor: pointer;
+    }
+    .help { margin: 0; padding-left: 1.1rem; color: var(--text-sub); font-size: 0.8rem; }
+    .note { font-size: 0.75rem; color: var(--text-sub); margin: 0.5rem 0 0; }
+    .note a { color: inherit; overflow-wrap: anywhere; }
+
+    #status {
+      position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; z-index: 3;
+      background: #fff; border-radius: 6px; padding: 0.5rem 0.9rem; font-size: 0.9rem;
+    }
+    .credit {
+      position: absolute; right: 0; bottom: 0; z-index: 2; max-width: 100%;
+      background: rgba(255, 255, 255, 0.85); font-size: 0.7rem; color: var(--text-sub); padding: 0.15rem 0.5rem;
+    }
+    .credit a { color: inherit; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1rem; }
+      header p { display: none; }
+      .panel { width: auto; right: 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>3D点群ビューア</h1>
+        <p>グリーンレーザ（ALB）で測った、伊豆半島西岸（土肥付近）の陸と海底の点群です。</p>
+      </div>
+      <a href="./">← 地図のページへ戻る</a>
+    </header>
+
+    <div id="view">
+      <details class="panel" id="panel" open>
+        <summary>操作と凡例</summary>
+        <div class="panel-body">
+          <h2>操作</h2>
+          <ul class="help">
+            <li>左ドラッグ（1本指）：回転</li>
+            <li>右ドラッグ・Shift＋ドラッグ（2本指）：移動</li>
+            <li>ホイール（ピンチ）：拡大・縮小</li>
+            <li>点にマウスを合わせると標高を表示</li>
+          </ul>
+
+          <h2>標高で色分け（m）</h2>
+          <div class="ramp" id="ramp"></div>
+          <div class="ramp-labels" id="ramp-labels"></div>
+          <div class="ramp-caption"><span>← 海底（深い）</span><span>陸（高い）→</span></div>
+
+          <h2>表示の調整</h2>
+          <label class="slider">高さの強調：<strong id="exag-val">2</strong> 倍
+            <input type="range" id="exag" min="1" max="5" step="0.5" value="2">
+          </label>
+          <label class="slider">点の大きさ：<strong id="size-val">1</strong> m
+            <input type="range" id="size" min="0.25" max="3" step="0.25" value="1">
+          </label>
+          <button type="button" id="reset">視点を元に戻す</button>
+
+          <p class="note" id="count-note"></p>
+          <p class="note">水面・水中の点と考えられる点（分類コード11）は除いています。分類コードの意味はくわしくは<a href="notes.html">調査メモ</a>へ。</p>
+        </div>
+      </details>
+
+      <div id="status">点群を読み込み中…</div>
+      <div class="credit">
+        データ：静岡県「VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ」ALBデータ 図郭 08OE2670
+        （<a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud">G空間情報センター</a>、<a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a>）を加工して作成
+        ／ このページは CC BY 4.0
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- 標高の色：0m（海面）を境に、海底は青、陸は茶色 ----
+    // 海の青は地図ページの水深図と同じ色（浅い=淡い、深い=濃い）
+    const SEA_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"];
+    const LAND_RAMP = ["#efe3c8", "#e2c98f", "#cfa95f", "#b58940", "#946a2c", "#6e4c1d"];
+    const SEA_MIN = -16;   // 海底の点は最も深くて約-16m
+    const LAND_MAX = 60;   // 陸の点は最も高くて約64m
+
+    const hexToRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    function rampColor(ramp, t) {
+      const s = Math.min(Math.max(t, 0), 1) * (ramp.length - 1);
+      const i = Math.min(Math.floor(s), ramp.length - 2);
+      const a = hexToRgb(ramp[i]), b = hexToRgb(ramp[i + 1]), f = s - i;
+      return a.map((v, k) => Math.round(v + (b[k] - v) * f));
+    }
+    function elevationColor(z) {
+      return z < 0 ? rampColor(SEA_RAMP, z / SEA_MIN) : rampColor(LAND_RAMP, z / LAND_MAX);
+    }
+
+    // 凡例：海の部分と陸の部分の幅を、標高の範囲の比に合わせる
+    (function drawLegend() {
+      const seaShare = -SEA_MIN / (LAND_MAX - SEA_MIN) * 100;
+      const sea = [...SEA_RAMP].reverse().map((c, i, a) => `${c} ${(i / (a.length - 1)) * seaShare}%`);
+      const land = LAND_RAMP.map((c, i, a) => `${c} ${seaShare + (i / (a.length - 1)) * (100 - seaShare)}%`);
+      document.getElementById("ramp").style.background = `linear-gradient(to right, ${[...sea, ...land].join(",")})`;
+      const labels = document.getElementById("ramp-labels");
+      for (const z of [SEA_MIN, 0, 20, 40, LAND_MAX]) {
+        const s = document.createElement("span");
+        s.style.left = `${((z - SEA_MIN) / (LAND_MAX - SEA_MIN)) * 100}%`;
+        s.textContent = z;
+        labels.appendChild(s);
+      }
+    })();
+
+    if (window.matchMedia("(max-width: 600px)").matches) {
+      document.getElementById("panel").open = false;
+    }
+
+    const statusEl = document.getElementById("status");
+    const exagInput = document.getElementById("exag");
+    const sizeInput = document.getElementById("size");
+
+    let deckgl, cloud, initialViewState;
+
+    function fitViewState(extent) {
+      const el = document.getElementById("view");
+      const px = Math.min(el.clientWidth, el.clientHeight);
+      return {
+        target: [0, 0, 0],
+        rotationX: 35,       // 見下ろす角度
+        rotationOrbit: -20,  // 水平方向の向き
+        zoom: Math.log2(px / (extent * 1.25)),
+        minZoom: -3,
+        maxZoom: 8,
+      };
+    }
+
+    // 経度・緯度を、範囲の中心からのメートルに直す（範囲が数百mなので平面とみなしてよい）
+    function buildPositions(points, center, exaggeration) {
+      const [lon0, lat0] = center;
+      const mPerDegLat = 111320;
+      const mPerDegLon = 111320 * Math.cos((lat0 * Math.PI) / 180);
+      const pos = new Float32Array(points.length * 3);
+      points.forEach((p, i) => {
+        pos[i * 3] = (p[0] - lon0) * mPerDegLon;
+        pos[i * 3 + 1] = (p[1] - lat0) * mPerDegLat;
+        pos[i * 3 + 2] = p[2] * exaggeration;
+      });
+      return pos;
+    }
+
+    function makeLayer() {
+      return new deck.PointCloudLayer({
+        id: "points",
+        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
+        data: {
+          length: cloud.points.length,
+          attributes: {
+            getPosition: { value: cloud.positions, size: 3 },
+            getColor: { value: cloud.colors, size: 3 },
+          },
+        },
+        pointSize: Number(sizeInput.value),
+        // 点の大きさはメートルで指定する（拡大すると点も大きくなり、すき間なく見える）
+        sizeUnits: "meters",
+        pickable: true,
+      });
+    }
+
+    function render() {
+      deckgl.setProps({ layers: [makeLayer()] });
+    }
+
+    async function main() {
+      let data;
+      try {
+        const res = await fetch("data/points.json");
+        if (!res.ok) throw new Error(res.status);
+        data = await res.json();
+      } catch (e) {
+        statusEl.textContent = "点群のデータ（data/points.json）を読み込めませんでした。";
+        return;
+      }
+
+      // columns: 経度・緯度・標高_m・分類コード
+      const points = data.points;
+      let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+      for (const p of points) {
+        if (p[0] < minLon) minLon = p[0];
+        if (p[0] > maxLon) maxLon = p[0];
+        if (p[1] < minLat) minLat = p[1];
+        if (p[1] > maxLat) maxLat = p[1];
+      }
+      const center = [(minLon + maxLon) / 2, (minLat + maxLat) / 2];
+      const colors = new Uint8Array(points.length * 3);
+      points.forEach((p, i) => colors.set(elevationColor(p[2]), i * 3));
+      cloud = { points, center, colors, positions: buildPositions(points, center, Number(exagInput.value)) };
+
+      const extentM = Math.max((maxLon - minLon) * 111320 * Math.cos((center[1] * Math.PI) / 180), (maxLat - minLat) * 111320);
+      initialViewState = fitViewState(extentM);
+
+      deckgl = new deck.Deck({
+        parent: document.getElementById("view"),
+        views: new deck.OrbitView({ orbitAxis: "Z", fovy: 40 }),
+        initialViewState,
+        controller: true,
+        layers: [makeLayer()],
+        getTooltip: ({ index }) => {
+          if (index < 0) return null;
+          const p = points[index];
+          const where = p[2] < 0 ? `水深 ${(-p[2]).toFixed(2)} m` : `標高 ${p[2].toFixed(2)} m`;
+          return { text: `${where}\n分類コード ${p[3]}` };
+        },
+      });
+
+      document.getElementById("count-note").textContent =
+        `表示している点：${points.length.toLocaleString()} 点（元の点群 6,743,586 点から間引き）`;
+      statusEl.hidden = true;
+    }
+
+    exagInput.addEventListener("input", () => {
+      document.getElementById("exag-val").textContent = exagInput.value;
+      if (!cloud) return;
+      cloud.positions = buildPositions(cloud.points, cloud.center, Number(exagInput.value));
+      render();
+    });
+    sizeInput.addEventListener("input", () => {
+      document.getElementById("size-val").textContent = sizeInput.value;
+      if (cloud) render();
+    });
+    document.getElementById("reset").addEventListener("click", () => {
+      if (!deckgl) return;
+      // 同じ値を渡しても視点が戻るよう、毎回新しいオブジェクトにする
+      deckgl.setProps({ initialViewState: { ...initialViewState, transitionDuration: 400 } });
+    });
+
+    main();
+  </script>
+</body>
+</html>
