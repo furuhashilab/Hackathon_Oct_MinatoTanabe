@@ -8,6 +8,10 @@
 - 3D点群ビューア：https://furuhashilab.github.io/greenlaser-seagrass/3d.html
 - データ調査メモ：https://furuhashilab.github.io/greenlaser-seagrass/notes.html
 
+## グラレコ（作業のまとめ）
+
+![グラレコ：グリーンレーザで、海の森「藻場」を傷つけずに測ってみた。きっかけ、藻場とは、グリーンレーザとは、やったこと、わかったこと、これからの6コマで作業をまとめた図](docs/img/grareco.png)
+
 ## 目的
 
 SotM Asia OSAKA での Honey Fombuena さんの発表をきっかけに、藻場を壊さずに広い範囲を測れるグリーンレーザ（ALB：航空レーザ測深）の点群データを初めて使ってみるソロハッカソンです。伊豆半島西岸（土肥付近）の海底地形から、藻場ができやすい場所（藻場ポテンシャル）を簡単なルールで推定し、環境省の藻場分布と比べました。
