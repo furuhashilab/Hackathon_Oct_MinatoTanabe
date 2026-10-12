@@ -1,0 +1,6 @@
+# 元データ・処理途中のファイル（容量が大きいのでgitに含めない）
+data/raw/
+data/work/
+
+# Python仮想環境
+.venv/
