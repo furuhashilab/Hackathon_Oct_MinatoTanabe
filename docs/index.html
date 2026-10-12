@@ -3,32 +3,277 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>グリーンレーザ(ALB)で見る伊豆の藻場ポテンシャル</title>
+  <title>グリーンレーザで見る伊豆の藻場ポテンシャル</title>
+  <!-- MapLibre GL JS（バージョン固定。integrity はファイルが書き換えられていないかの確認用） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css"
+        integrity="sha384-uTttxo/aOKbdE5RlD/SPzSDoDmNvGlUYPjONi2MN/b7c9HPSvW07OIuyP7uL6jxK" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"
+          integrity="sha384-5+cfbwT0iiub6VsQAdn6yz16nr6sDiQoHx6tm4O8OVYXHYOxcffFmCJBL0dgdvGp" crossorigin="anonymous"></script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 2rem 1rem; line-height: 1.7; color: #222; }
-    h1 { font-size: 1.5rem; }
-    footer { margin-top: 3rem; font-size: 0.9rem; color: #555; }
+    :root {
+      --surface: #fcfcfb;
+      --panel: #ffffff;
+      --text: #0b0b0b;
+      --text-sub: #52514e;
+      --border: #e4e3df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+      color: var(--text);
+      background: var(--surface);
+      line-height: 1.6;
+    }
+    /* ヘッダーと地図で画面の高さをちょうど埋める */
+    .app { display: flex; flex-direction: column; height: 100vh; height: 100svh; min-height: 420px; }
+    header {
+      flex: none;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 1.15rem; line-height: 1.4; }
+    header p { margin: 0.1rem 0 0; font-size: 0.85rem; color: var(--text-sub); }
+
+    #map-wrap { position: relative; flex: 1; }
+    #map { position: absolute; inset: 0; }
+
+    /* 地図の上に重ねるパネル */
+    .panel {
+      position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2;
+      width: 17rem; max-width: calc(100% - 4rem); max-height: calc(100% - 3rem); overflow-y: auto;
+      background: rgba(255, 255, 255, 0.95); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); font-size: 0.85rem;
+    }
+    .panel summary { cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 600; }
+    .panel-body { padding: 0 0.75rem 0.6rem; }
+    .panel h2 { font-size: 0.8rem; color: var(--text-sub); margin: 0.6rem 0 0.25rem; font-weight: 600; }
+    .panel label { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0; cursor: pointer; }
+    .panel input { margin: 0; width: 1rem; height: 1rem; }
+
+    /* 凡例 */
+    .ramp { height: 0.7rem; border-radius: 2px; margin-top: 0.2rem; }
+    .ramp-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-sub); }
+    .legend-row { display: flex; align-items: center; gap: 0.45rem; padding: 0.1rem 0; }
+    .swatch { flex: none; width: 1rem; height: 0.8rem; border-radius: 2px; }
+    .line-swatch { flex: none; width: 1rem; height: 0; border-top: 2.5px solid; }
+    .note { font-size: 0.75rem; color: var(--text-sub); margin: 0.4rem 0 0; }
+    .note a { color: inherit; }
+
+    #message {
+      position: absolute; inset: auto 0 2.5rem; margin: auto; width: fit-content; max-width: 90%; z-index: 3;
+      background: #fff3f0; color: #8a1c00; border: 1px solid #f0b8a8; border-radius: 6px; padding: 0.5rem 0.8rem;
+    }
+
+    main { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 2rem; }
+    main h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+    main li { margin-bottom: 0.5rem; }
+    main a { overflow-wrap: anywhere; }
+    footer { font-size: 0.85rem; color: var(--text-sub); border-top: 1px solid var(--border); margin-top: 2rem; padding-top: 1rem; }
+
+    @media (max-width: 600px) {
+      /* スマホでは地図の下を少し見せて、スクロールで出典に進めるようにする */
+      .app { height: 85vh; height: 85svh; }
+      header h1 { font-size: 1rem; }
+      header p { font-size: 0.8rem; }
+      .panel { width: auto; right: 3.2rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>グリーンレーザ(ALB)で見る伊豆の藻場ポテンシャル</h1>
-  <p>準備中です。</p>
+  <div class="app">
+  <header>
+    <h1>グリーンレーザで見る伊豆の藻場ポテンシャル</h1>
+    <p>航空機から緑色のレーザで測った海底地形をもとに、藻場ができやすい場所を推定した地図です（伊豆半島西岸）。</p>
+  </header>
 
-  <p><a href="notes.html">データ調査メモ</a></p>
+  <div id="map-wrap">
+    <div id="map" role="region" aria-label="藻場ポテンシャルの地図"></div>
 
-  <h2>使用データの出典</h2>
-  <ul>
-    <li>静岡県「VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ」ALBデータ（オリジナル・グラウンドデータ、グリッドデータ）図郭 08OE2670、G空間情報センター
-      <a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud">https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud</a>
-      （<a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a>）を加工して作成</li>
-    <li>環境省自然環境局 生物多様性センター「自然環境保全基礎調査 藻場調査2018-2020（UTM54）」、環境ジオポータル
-      <a href="https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about">https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about</a>
-      （提供元の利用規約（政府標準利用規約 第2.0版）に基づき利用）を加工して作成。藻場タイプの凡例：
-      <a href="https://www.biodic.go.jp/moba/1_3_7.html">https://www.biodic.go.jp/moba/1_3_7.html</a></li>
-  </ul>
+    <details class="panel" id="panel" open>
+      <summary>表示の切り替えと凡例</summary>
+      <div class="panel-body">
+        <h2>背景地図</h2>
+        <label><input type="radio" name="basemap" value="pale" checked> 淡色地図</label>
+        <label><input type="radio" name="basemap" value="photo"> 写真</label>
 
-  <footer>
-    <p>© 作者名 ／ この成果物は <a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a> で公開しています。</p>
-  </footer>
+        <h2>レイヤ</h2>
+        <label><input type="checkbox" data-layer="depth" checked> 水深図</label>
+        <label><input type="checkbox" data-layer="potential"> 藻場ポテンシャル図</label>
+        <label><input type="checkbox" data-layer="contours" checked> 等深線（5m間隔）</label>
+        <label><input type="checkbox" data-layer="moba" checked> 環境省の藻場</label>
+
+        <h2>水深（m）</h2>
+        <div class="ramp" id="depth-ramp"></div>
+        <div class="ramp-labels"><span>0</span><span>5</span><span>10</span><span>15</span></div>
+
+        <h2>藻場ポテンシャル</h2>
+        <div class="legend-row"><span class="swatch" style="background:#2a78d6"></span>砂泥タイプ（水深1〜10m・なだらか・平ら）</div>
+        <div class="legend-row"><span class="swatch" style="background:#eb6834"></span>岩礁タイプ（水深1〜15m・デコボコ）</div>
+
+        <h2>その他</h2>
+        <div class="legend-row"><span class="swatch" style="background:#808080"></span>データなし（灰色＝レーザが届かなかった所）</div>
+        <div class="legend-row"><span class="line-swatch" style="border-color:#008300"></span>環境省の藻場（枠線）</div>
+        <div class="legend-row"><span class="line-swatch" style="border-color:#1a1a19;border-top-width:1.5px"></span>等深線（太線は海岸線）</div>
+
+        <p class="note">北西の深い区域は、元データが補間で作られているため、ポテンシャル区分の信頼性が低くなっています。くわしくは<a href="notes.html">調査メモ</a>へ。</p>
+      </div>
+    </details>
+
+    <div id="message" hidden></div>
+  </div>
+  </div>
+
+  <main>
+    <h2>この地図について</h2>
+    <p>グリーンレーザ（ALB：航空レーザ測深）は、水を通りやすい緑色のレーザを使って、陸と海底の地形をまとめて測る方法です。藻場を壊さずに広い範囲を測れます。この地図では、海底の深さ・傾き・デコボコ（ざらつき）から、藻場ができやすい場所を簡単なルールで2つのタイプに分けました。調べた方法と結果は<a href="notes.html">調査メモ</a>にあります。</p>
+
+    <h2>使用データの出典</h2>
+    <ul>
+      <li>静岡県「VIRTUAL SHIZUOKA 静岡県 伊豆西部 点群データ」ALBデータ（オリジナル・グラウンドデータ、グリッドデータ）図郭 08OE2670、G空間情報センター
+        <a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud">https://www.geospatial.jp/ckan/dataset/shizuoka-2020-pointcloud</a>
+        （<a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a>）を加工して作成</li>
+      <li>環境省自然環境局 生物多様性センター「自然環境保全基礎調査 藻場調査2018-2020（UTM54）」、環境ジオポータル
+        <a href="https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about">https://geoportal.env.go.jp/datasets/1209759c6d614dacad11f48b9e113032_0/about</a>
+        （提供元の利用規約（政府標準利用規約 第2.0版）に基づき利用）を加工して作成。藻場タイプの凡例：
+        <a href="https://www.biodic.go.jp/moba/1_3_7.html">https://www.biodic.go.jp/moba/1_3_7.html</a></li>
+      <li>背景地図：<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（淡色地図、写真）</li>
+    </ul>
+
+    <footer>
+      <p>© 作者名 ／ この成果物は <a href="https://creativecommons.org/licenses/by/4.0/deed.ja">CC BY 4.0</a> で公開しています。</p>
+    </footer>
+  </main>
+
+  <script>
+    // 水深の色（scripts/04_export_web.py の DEPTH_RAMP と同じ）
+    const DEPTH_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"];
+    // PNG の色は 0〜16m の範囲で塗っているので、凡例の目盛り（0・5・10・15）が正しい位置に来るよう 15m までを表示する
+    document.getElementById("depth-ramp").style.background =
+      `linear-gradient(to right, ${DEPTH_RAMP.join(",")}) 0 0 / ${(16 / 15) * 100}% 100% no-repeat`;
+
+    // スマホでは最初はパネルを閉じておく（地図を広く見せるため）
+    if (window.matchMedia("(max-width: 600px)").matches) {
+      document.getElementById("panel").open = false;
+    }
+
+    const GSI_ATTRIBUTION = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>';
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: {
+        version: 8,
+        sources: {
+          pale: {
+            type: "raster",
+            tiles: ["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png"],
+            tileSize: 256, maxzoom: 18, attribution: GSI_ATTRIBUTION,
+          },
+          photo: {
+            type: "raster",
+            tiles: ["https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg"],
+            tileSize: 256, maxzoom: 18, attribution: GSI_ATTRIBUTION,
+          },
+        },
+        layers: [
+          { id: "pale", type: "raster", source: "pale" },
+          { id: "photo", type: "raster", source: "photo", layout: { visibility: "none" } },
+        ],
+      },
+      center: [138.7646, 34.8436],
+      zoom: 16,
+      maxZoom: 20,
+      attributionControl: false,
+    });
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+
+    // チェックボックスの名前と、地図のレイヤの対応
+    const LAYER_GROUPS = {
+      depth: ["depth"],
+      potential: ["potential"],
+      contours: ["contours", "coastline"],
+      moba: ["moba-casing", "moba"],
+    };
+
+    function showMessage(text) {
+      const el = document.getElementById("message");
+      el.textContent = text;
+      el.hidden = false;
+    }
+
+    map.on("load", async () => {
+      let bounds;
+      try {
+        const res = await fetch("data/bounds.json");
+        if (!res.ok) throw new Error(res.status);
+        bounds = await res.json();
+      } catch (e) {
+        showMessage("データ（data/bounds.json）を読み込めませんでした。");
+        return;
+      }
+      const coords = bounds.coordinates; // 左上・右上・右下・左下
+
+      map.addSource("depth", { type: "image", url: "data/depth.png", coordinates: coords });
+      map.addSource("potential", { type: "image", url: "data/potential.png", coordinates: coords });
+      map.addSource("contours", { type: "geojson", data: "data/contours.geojson" });
+      map.addSource("moba", { type: "geojson", data: "data/moba.geojson" });
+
+      const rasterPaint = { "raster-opacity": 0.85, "raster-resampling": "nearest", "raster-fade-duration": 0 };
+      map.addLayer({ id: "depth", type: "raster", source: "depth", paint: rasterPaint });
+      map.addLayer({ id: "potential", type: "raster", source: "potential", paint: rasterPaint, layout: { visibility: "none" } });
+      map.addLayer({
+        id: "contours", type: "line", source: "contours", filter: [">", ["get", "水深_m"], 0],
+        paint: { "line-color": "#1a1a19", "line-width": 1, "line-opacity": 0.7 },
+      });
+      map.addLayer({
+        id: "coastline", type: "line", source: "contours", filter: ["==", ["get", "水深_m"], 0],
+        paint: { "line-color": "#1a1a19", "line-width": 2, "line-opacity": 0.8 },
+      });
+      // 藻場の枠線（写真の上でも見えるよう、白いふちを下に敷く）
+      map.addLayer({ id: "moba-casing", type: "line", source: "moba", paint: { "line-color": "#ffffff", "line-width": 4.5, "line-opacity": 0.9 } });
+      map.addLayer({ id: "moba", type: "line", source: "moba", paint: { "line-color": "#008300", "line-width": 2.5 } });
+
+      // 初期表示を bounds.json の範囲に合わせる
+      const lons = coords.map((c) => c[0]);
+      const lats = coords.map((c) => c[1]);
+      map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                    { padding: 30, animate: false });
+
+      // 藻場をクリックしたら情報を表示
+      map.on("click", "moba", (e) => {
+        const p = e.features[0].properties;
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<strong>${p["藻場タイプ"]}</strong><br>面積：${Number(p["面積_m2"]).toLocaleString()} m²（ALB範囲内）`)
+          .addTo(map);
+      });
+      map.on("mouseenter", "moba", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "moba", () => { map.getCanvas().style.cursor = ""; });
+
+      // レイヤの表示切替
+      document.querySelectorAll("input[data-layer]").forEach((box) => {
+        const apply = () => {
+          for (const id of LAYER_GROUPS[box.dataset.layer]) {
+            map.setLayoutProperty(id, "visibility", box.checked ? "visible" : "none");
+          }
+        };
+        box.addEventListener("change", apply);
+        apply();
+      });
+    });
+
+    // 背景地図の切替
+    document.querySelectorAll('input[name="basemap"]').forEach((radio) => {
+      radio.addEventListener("change", () => {
+        map.setLayoutProperty("pale", "visibility", radio.value === "pale" ? "visible" : "none");
+        map.setLayoutProperty("photo", "visibility", radio.value === "photo" ? "visible" : "none");
+      });
+    });
+
+    map.on("error", (e) => console.error(e.error));
+  </script>
 </body>
 </html>
