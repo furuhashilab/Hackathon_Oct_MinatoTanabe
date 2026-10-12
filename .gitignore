@@ -4,3 +4,6 @@ data/work/
 
 # Python仮想環境
 .venv/
+
+# Pythonのキャッシュ
+__pycache__/
